@@ -25,7 +25,7 @@ import Search from './pages/components/Search'
 import getAllNotifications from './hooks/getallNotifications'
 import Notifications from './pages/components/Notifications'
 import { setnotificationData } from './redux/userslic'
-export const serverUrl ="http://localhost:8000"
+export const serverUrl ="https://yupp-6o8i.onrender.com"
 function App() {
   getcurrentuser()
   getsuggestedusers()
