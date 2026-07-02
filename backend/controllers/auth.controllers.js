@@ -32,8 +32,8 @@ const hashedpassword = await bcrypt.hash(password,10)
     res.cookie("token",token,{
         httpOnly:true,
         maxAge:10*365*24*60*60*1000,
-        secure:process.env.NODE_ENV === "production",
-        sameSite:"Strict"
+        secure:"true",
+        sameSite:"None"
     })
     const {password:_,...safeUser} = user.toObject()
     return res.status(201).json(safeUser)
@@ -65,8 +65,8 @@ const isMatch= await bcrypt.compare(password,user.password)
     res.cookie("token",token,{
         httpOnly:true,
         maxAge:10*365*24*60*60*1000,
-        secure:process.env.NODE_ENV === "production",
-        sameSite:"Strict"
+        secure: "true",
+        sameSite:"None"
     })
     const {password:_,...safeUser} = user.toObject()
     return res.status(200).json(safeUser)
@@ -85,8 +85,8 @@ export const signOut = async(req,res)=>{
     try {
         res.clearCookie("token",{
         httpOnly:true,
-        secure:process.env.NODE_ENV === "production",
-        sameSite:"Strict"
+        secure: "true",
+        sameSite:"None"
     })
     return res.status(200).json({message:"signOut successfully"})
     } catch (error) {
