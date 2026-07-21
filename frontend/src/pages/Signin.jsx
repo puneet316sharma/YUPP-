@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import logo from "../assets/logo.png"
 import { useCallback } from 'react'
 import axios from 'axios'
@@ -21,6 +21,49 @@ const[username, setUsername]=useState("")
 const[password, setpassword]=useState("")
 const dispatch=useDispatch()
 const navigate = useNavigate()
+
+const handleGoogleLoginSuccess = async (response) => {
+  setloading(true)
+  seterr("")
+  try {
+    const result = await axios.post(
+      `${serverUrl}/api/auth/google`,
+      { credential: response.credential },
+      { withCredentials: true }
+    )
+    dispatch(setuserData(result.data))
+    setloading(false)
+    navigate("/")
+  } catch (error) {
+    console.log(error)
+    setloading(false)
+    seterr(error.response?.data?.message || "Google sign-in failed")
+  }
+}
+
+useEffect(() => {
+  const initializeGoogleSignIn = () => {
+    if (window.google) {
+      window.google.accounts.id.initialize({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "371490214690-33p88q94c34aeg560p4s4o4t7g8b9c24.apps.googleusercontent.com",
+        callback: handleGoogleLoginSuccess
+      });
+      window.google.accounts.id.renderButton(
+        document.getElementById("google-signin-button"),
+        { theme: "outline", size: "large", width: 280, shape: "pill" }
+      );
+    }
+  };
+
+  const interval = setInterval(() => {
+    if (window.google) {
+      initializeGoogleSignIn();
+      clearInterval(interval);
+    }
+  }, 100);
+
+  return () => clearInterval(interval);
+}, [dispatch, navigate]);
 const handlesignin=async()=>{
   setloading(true)
   seterr("")
@@ -60,7 +103,8 @@ const handlesignin=async()=>{
 <div className='w-[90%] px-[20px] cursor-pointer' onClick={()=>navigate("/ForgotPassword")}>Forgot Password?</div>
 
 <button className='w-[70%] px-[20px] py-[10px] bg-black text-white font-semibold h-[50px] cursor-pointer  rounded-2xl mt-[30px]'onClick={handlesignin} disabled={loading}>{loading?<ClipLoader size={30} color='white'/>:"Sign In"} </button>
-<p className='cursor-pointer text-gray-800'>Want to create a new account ? <span className='border-b-2 border-b-black pb-[3px] text-black' onClick={()=>navigate("/signup")}>Sign Up</span></p>
+<div id="google-signin-button" className="w-[70%] flex justify-center mt-2"></div>
+<p className='cursor-pointer text-gray-800 mt-2'>Want to create a new account ? <span className='border-b-2 border-b-black pb-[3px] text-black' onClick={()=>navigate("/signup")}>Sign Up</span></p>
 </div>
 <div className='lg:flex justify-center items-center bg-[#000000] flex-col gap-[10px] text-white text-[16px] font-semibold rounded-l-[30px] shadow-2xl shadow-black md:w-[50%] h-full hidden'>
 <img src={logo} alt='' className='w-[60%]'/>

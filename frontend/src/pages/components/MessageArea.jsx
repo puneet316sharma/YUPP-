@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { IoMdArrowBack } from "react-icons/io"
 import { FaImages } from "react-icons/fa6"
-import { IoSend } from "react-icons/io5"
+import { IoSend, IoVideocam } from "react-icons/io5"
+import { useVideoCall } from '../../context/VideoCallContext'
 import dp from "../../assets/dp.png"
 import SenderMessage from './SenderMessage'
 import ReceiverMessage from './ReceiverMessage'
@@ -17,6 +18,7 @@ function MessageArea() {
     const { socket, OnlineUsers: onlineUserIds } = useSelector(state => state.socket)
     const navigate = useNavigate()
     const dispatch = useDispatch()
+    const { startCall } = useVideoCall()
 
     const [input, setinput] = useState("")
     const [frontendImage, setfrontendImage] = useState(null)
@@ -121,6 +123,13 @@ function MessageArea() {
                     <span className='text-white font-semibold text-[15px] truncate'>{selectedUser.username}</span>
                     <span className='text-[12px] text-gray-400'>{isOnline ? 'Active now' : selectedUser.name}</span>
                 </div>
+                <button 
+                    onClick={() => startCall(selectedUser._id, selectedUser)}
+                    className='text-white hover:text-emerald-400 p-2 rounded-full hover:bg-zinc-900 transition-all flex-shrink-0 cursor-pointer'
+                    title="Start Video Call"
+                >
+                    <IoVideocam size={22} />
+                </button>
             </div>
 
             {/* ── Message list ── */}

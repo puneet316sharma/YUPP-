@@ -3,12 +3,20 @@ import UploadonCloudinary from "../config/cloudinary.js";
 import Conversation from "../models/Conversion.model.js";
 import Message from "../models/messages.model.js";
 import { getSocketId, io } from "../socket.js";
+import { moderateText } from "../config/aiService.js";
 
 export const sendMessage=async(req,res)=>{
     try {
         const senderId=req.userId
         const receiverId=req.params.receiverId
         const {message}=req.body
+
+        if (message) {
+            const moderation = await moderateText(message);
+            if (!moderation.allowed) {
+                return res.status(400).json({ message: moderation.reason || "Content violates platform guidelines." });
+            }
+        }
         let image;
         if(req.file){
             image=await UploadonCloudinary(req.file.path)

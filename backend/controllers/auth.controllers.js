@@ -2,95 +2,172 @@ import sendMail from "../config/Mail.js"
 import gentoken from "../config/token.js"
 import User from "../models/user.model.js"
 import bcrypt from "bcryptjs"
-export const signup =async (req,res)=>{
+import { OAuth2Client } from "google-auth-library"
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
+
+const validateFields = (fields) => {
+    for (const [key, value] of Object.entries(fields)) {
+        if (value === undefined || value === null || (typeof value === "string" && value.trim() === "")) {
+            return `${key} is required`;
+        }
+    }
+    return null;
+};
+
+const getCookieOptions = () => {
+    const isProduction = process.env.NODE_ENV === "production";
+    return {
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        secure: process.env.COOKIE_SECURE === "true" || isProduction,
+        sameSite: process.env.COOKIE_SAME_SITE || (isProduction ? "None" : "Lax")
+    };
+};
+
+export const signup = async (req, res) => {
    try {
     console.log(req.body)  
-    const{name, email,password, username}= req.body
-    const findbyemail =await User.findOne({email})
+    const { name, email, password, username } = req.body
+    
+    const validationError = validateFields({ name, email, password, username });
+    if (validationError) {
+        return res.status(400).json({ message: validationError });
+    }
+
+    const findbyemail = await User.findOne({ email })
     if (findbyemail){
-        return res.status(400).json({message:"Email already exists "})
+        return res.status(400).json({ message: "Email already exists " })
     }
- const findbyusername =await User.findOne({username})
+    const findbyusername = await User.findOne({ username })
     if (findbyusername){
-        return res.status(400).json({message:"Username already exists "})
-
-
+        return res.status(400).json({ message: "Username already exists " })
     }
 
-    if (password.length<6){
- return res.status(400).json({message:"password must be atleast 6 characters "})
-
+    if (password.length < 6) {
+        return res.status(400).json({ message: "password must be atleast 6 characters " })
     }
-const hashedpassword = await bcrypt.hash(password,10)
-    const user =await User.create({
+    
+    const hashedpassword = await bcrypt.hash(password, 10)
+    const user = await User.create({
         name,
         username,
         email,
-    password:hashedpassword
+        password: hashedpassword
     })
-    const token= await gentoken(user._id)
-    res.cookie("token",token,{
-        httpOnly:true,
-        maxAge:10*365*24*60*60*1000,
-        secure:"true",
-        sameSite:"None"
-    })
-    const {password:_,...safeUser} = user.toObject()
+    
+    const token = await gentoken(user._id)
+    res.cookie("token", token, getCookieOptions())
+    
+    const { password: _, ...safeUser } = user.toObject()
     return res.status(201).json(safeUser)
 
    } catch (error) {
     console.log("Signup error:", error)
-    return res.status(500).json({message:"signup error"})
+    return res.status(500).json({ message: "signup error" })
    }
 }
 
-
-
-
-
-
-export const signIn =async (req,res)=>{
+export const signIn = async (req, res) => {
    try {
-    const{password, username}= req.body
+    const { password, username } = req.body
     
- const user =await User.findOne({username})
-    if (!user){
-        return res.status(400).json({message:"User not found "})
+    const validationError = validateFields({ password, username });
+    if (validationError) {
+        return res.status(400).json({ message: validationError });
     }
-const isMatch= await bcrypt.compare(password,user.password)
-    if (!isMatch){
-       return res.status(400).json({message:"Incorrect Password"}) 
+    
+    const user = await User.findOne({ username })
+    if (!user) {
+        return res.status(400).json({ message: "User not found " })
     }
-    const token= await gentoken(user._id)
-    res.cookie("token",token,{
-        httpOnly:true,
-        maxAge:10*365*24*60*60*1000,
-        secure: "true",
-        sameSite:"None"
-    })
-    const {password:_,...safeUser} = user.toObject()
+    
+    if (user.authProvider === "google" && !user.password) {
+        return res.status(400).json({ message: "This account uses Google Sign-In. Please sign in with Google." })
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password)
+    if (!isMatch) {
+       return res.status(400).json({ message: "Incorrect Password" }) 
+    }
+    
+    const token = await gentoken(user._id)
+    res.cookie("token", token, getCookieOptions())
+    
+    const { password: _, ...safeUser } = user.toObject()
     return res.status(200).json(safeUser)
 
    } catch (error) {
     console.log("Signin error:", error)
-  return res.status(500).json({message:"signup error"})
-
+    return res.status(500).json({ message: "signup error" })
    }
 }
 
-
-
-
-export const signOut = async(req,res)=>{
+export const googleSignIn = async (req, res) => {
     try {
-        res.clearCookie("token",{
-        httpOnly:true,
-        secure: "true",
-        sameSite:"None"
-    })
-    return res.status(200).json({message:"signOut successfully"})
+        const { credential } = req.body
+        const validationError = validateFields({ credential });
+        if (validationError) {
+            return res.status(400).json({ message: validationError });
+        }
+
+        const ticket = await client.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        })
+        const payload = ticket.getPayload()
+        const { email, name, sub: googleId, picture } = payload
+
+        let user = await User.findOne({ email })
+        if (user) {
+            if (user.authProvider !== "google") {
+                user.authProvider = "google";
+                user.googleId = googleId;
+                if (!user.profileImage && picture) {
+                    user.profileImage = picture;
+                }
+                await user.save();
+            }
+        } else {
+            let baseUsername = email.split("@")[0].toLowerCase().replace(/[^a-zA-Z0-9_]/g, "");
+            if (!baseUsername) baseUsername = "user";
+            let username = baseUsername;
+            let counter = 1;
+            while (await User.findOne({ username })) {
+                username = `${baseUsername}${counter}`;
+                counter++;
+            }
+
+            user = await User.create({
+                name,
+                email,
+                username,
+                googleId,
+                authProvider: "google",
+                profileImage: picture,
+                role: "user"
+            });
+        }
+
+        const token = await gentoken(user._id)
+        res.cookie("token", token, getCookieOptions())
+
+        const { password: _, ...safeUser } = user.toObject()
+        return res.status(200).json(safeUser)
     } catch (error) {
-        return res.status(500).json({message:`signin error ${error}`}) 
+        console.log("Google Signin error:", error)
+        return res.status(500).json({ message: `Google Signin error: ${error.message}` })
+    }
+}
+
+export const signOut = async (req, res) => {
+    try {
+        const options = getCookieOptions();
+        delete options.maxAge;
+        res.clearCookie("token", options)
+        return res.status(200).json({ message: "signOut successfully" })
+    } catch (error) {
+        return res.status(500).json({ message: `signin error ${error}` }) 
     }
 }
 

@@ -3,16 +3,26 @@ import Notification from "../models/notification.model.js";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 import { getSocketId, io } from "../socket.js";
+import { moderateText } from "../config/aiService.js";
 
 export const uploadPost = async (req, res) => {
     try {
-        const { caption, mediaType } = req.body
-        let media;
+        const { caption, mediaType, mediaUrl } = req.body
         
-        if (req.file) {
-            media = await UploadonCloudinary(req.file.path)
-        } else {
-            return res.status(400).json({ message: "media is required" })
+        if (caption) {
+            const moderation = await moderateText(caption);
+            if (!moderation.allowed) {
+                return res.status(400).json({ message: moderation.reason || "Content violates platform guidelines." });
+            }
+        }
+
+        let media = mediaUrl;
+        if (!media) {
+            if (req.file) {
+                media = await UploadonCloudinary(req.file.path)
+            } else {
+                return res.status(400).json({ message: "media is required" })
+            }
         }
         
         const post = await Post.create({
@@ -94,6 +104,14 @@ export const comment = async (req, res) => {
     try {
         const { message } = req.body
         const postId = req.params.postId
+
+        if (message) {
+            const moderation = await moderateText(message);
+            if (!moderation.allowed) {
+                return res.status(400).json({ message: moderation.reason || "Content violates platform guidelines." });
+            }
+        }
+
         const post = await Post.findById(postId)
         
         if (!post) {
