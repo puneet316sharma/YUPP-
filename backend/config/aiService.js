@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import axios from "axios";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -19,9 +18,13 @@ export const suggestCaptionAndHashtags = async (imageUrl) => {
             };
         }
 
-        const imageResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-        const base64Data = Buffer.from(imageResponse.data, 'binary').toString('base64');
-        const contentType = imageResponse.headers['content-type'] || 'image/jpeg';
+        const imageResponse = await fetch(imageUrl);
+        if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+        }
+        const arrayBuffer = await imageResponse.arrayBuffer();
+        const base64Data = Buffer.from(arrayBuffer).toString('base64');
+        const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
 
         let mediaType = "image/jpeg";
         if (contentType.includes("png")) mediaType = "image/png";
