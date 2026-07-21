@@ -1,0 +1,44 @@
+services:
+  # Backend Web Service
+  - type: web
+    name: yupp-backend
+    runtime: node
+    repo: https://github.com/puneet316sharma/YUPP-
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URL
+        sync: false # User enters manually in Render dashboard
+      - key: JWT_SECRET
+        sync: false
+      - key: EMAIL
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        value: https://yupp-wn71.onrender.com
+
+  # Frontend Static Site
+  - type: web
+    name: yupp-frontend
+    runtime: static
+    repo: https://github.com/puneet316sharma/YUPP-
+    buildCommand: npm run build
+    publishPath: dist
+    envVars:
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false
