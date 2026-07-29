@@ -10,7 +10,6 @@ import postRouter from "./routes/post.routes.js"
 import scrollRouter from "./routes/scroll.routes.js"
 import storyRouter from "./routes/story.routes.js"
 import MessageRouter from "./routes/message.routes.js"
-import aiRouter from "./routes/ai.routes.js"
 import { app, server } from "./socket.js"
 
 dotenv.config()
@@ -34,21 +33,12 @@ const authLimiter = rateLimit({
     legacyHeaders: false,
 })
 
-const aiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 50,
-    message: { message: "Too many AI requests, please try again after 15 minutes" },
-    standardHeaders: true,
-    legacyHeaders: false,
-})
-
 app.use("/api/auth", authLimiter, authRouter)
 app.use("/api/user", userRouter)
 app.use("/api/post", postRouter)
 app.use("/api/scroll", scrollRouter)
 app.use("/api/story", storyRouter)
 app.use("/api/message", MessageRouter)
-app.use("/api/ai", aiLimiter, aiRouter)
 
 server.listen(port, () => {
     ConnectDb()

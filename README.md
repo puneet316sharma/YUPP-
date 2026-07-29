@@ -17,19 +17,36 @@ YUPP! is a full-stack social media application built as a learning project to ex
 * Express.js
 * MongoDB
 * JWT
+# YUPP! 🚀
+
+YUPP! is a full-stack social media application built as a learning project to explore modern web development. It focuses on implementing real-world features while gaining hands-on experience with frontend development, backend APIs, authentication, databases, and deployment.
+
+## ✨ Features
+
+* User authentication
+* Create, edit, and delete posts
+* Like and comment system
+* User profiles
+* Responsive UI
+
+## 🛠️ Tech Stack
+
+* React
+* Node.js
+* Express.js
+* MongoDB
+* JWT
 * Git & GitHub
 
 ## 🎯 Purpose
 
 The primary goal of YUPP! is to learn full-stack development by building a complete, production-inspired application and understanding how different technologies work together.
 
-## 🚀 Recent Enhancements (Google Auth, Claude AI, WebRTC Video Calling)
+## 🚀 Recent Enhancements (Google Auth, WebRTC Video Calling)
 
 This project has been extended with the following major features:
 1. **Google OAuth 2.0 Authentication**: Log in/sign up seamlessly using Google.
-2. **AI Caption & Hashtag Suggestions**: Automatically generate captions (under 20 words) and 5 relevant hashtags using Anthropic Claude Sonnet 3.5.
-3. **AI Text Moderation**: Real-time content moderation filtering out harassment, hate speech, explicit material, and spam on captions, comments, and DMs.
-4. **WebRTC Video Calling**: Real-time video/audio calling with active-call cleanups and device toggling.
+2. **WebRTC Video Calling**: Real-time video/audio calling with active-call cleanups and device toggling.
 
 ---
 
@@ -37,8 +54,7 @@ This project has been extended with the following major features:
 
 #### Backend:
 - `google-auth-library`: For validating Google Identity Services credentials server-side.
-- `@anthropic-ai/sdk`: Official SDK to interact with Anthropic's Claude API.
-- `express-rate-limit`: Prevents route abuse and controls AI API usage costs.
+- `express-rate-limit`: Prevents route abuse and controls backend API usage.
 
 ---
 
@@ -46,7 +62,6 @@ This project has been extended with the following major features:
 
 #### Backend (`backend/.env`):
 - `GOOGLE_CLIENT_ID`: Your Google OAuth 2.0 Web Client ID.
-- `ANTHROPIC_API_KEY`: Your Anthropic Developer Console API key.
 - `FRONTEND_URL` *(Optional)*: Dev or production frontend host (defaults to `http://localhost:5173`).
 - `COOKIE_SECURE` *(Optional)*: Set `true` to require HTTPS cookies (defaults to `true` in production).
 - `COOKIE_SAME_SITE` *(Optional)*: Set cookie same-site policy (e.g. `None`, `Lax`, `Strict`).
@@ -60,10 +75,6 @@ This project has been extended with the following major features:
 
 #### Authentication:
 - `POST /api/auth/google`: Handles Google credential validation, linking, and cookie-based JWT issuance.
-
-#### AI Assistant:
-- `POST /api/ai/caption`: Returns JSON suggestions with `{ caption, hashtags }` based on a Cloudinary media URL.
-- `POST /api/ai/upload-temp`: Temporary file upload to Cloudinary matching suggestions requirement.
 
 ---
 

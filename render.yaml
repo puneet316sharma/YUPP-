@@ -27,8 +27,6 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
       - key: FRONTEND_URL
         value: https://yupp-wn71.onrender.com
 
