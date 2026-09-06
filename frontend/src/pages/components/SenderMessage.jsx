@@ -4,15 +4,16 @@ import dp from "../../assets/dp.png"
 
 function SenderMessage({ message }) {
     const { userData } = useSelector(state => state.user)
+    const textContent = message?.message || message?.meassage
     return (
         <div className='flex items-end gap-[8px] justify-end'>
             <div className='max-w-[65%] flex flex-col gap-[6px] items-end'>
-                {message.image && (
+                {message?.image && (
                     <img src={message.image} alt='' className='max-w-full rounded-2xl rounded-tr-sm object-cover max-h-[260px]' />
                 )}
-                {message.message && (
+                {textContent && (
                     <div className='bg-gradient-to-br from-[#9500ff] to-[#ff0095] text-white text-[15px] px-[14px] py-[10px] rounded-2xl rounded-tr-sm break-words'>
-                        {message.message}
+                        {textContent}
                     </div>
                 )}
             </div>

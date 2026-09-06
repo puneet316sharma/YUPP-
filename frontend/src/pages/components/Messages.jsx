@@ -48,36 +48,67 @@ function Messages() {
 
             {/* Chat list */}
             <div className='w-full flex flex-col'>
-                {(!prevChatUsers || prevChatUsers.length === 0) && (
-                    <div className='text-gray-500 text-center mt-[60px] text-[16px]'>No messages yet</div>
-                )}
-                {prevChatUsers?.map((user, index) => {
-                    const isOnline = onlineUserIds?.includes(user?._id?.toString())
-                    return (
-                        <div
-                            key={user._id || index}
-                            className='w-full flex items-center gap-[12px] px-[15px] py-[10px] hover:bg-gray-900 cursor-pointer active:bg-gray-800 transition-colors'
-                            onClick={() => openChat(user)}
-                        >
-                            {/* Avatar with online dot */}
-                            <div className='relative flex-shrink-0'>
-                                <div className='w-[54px] h-[54px] rounded-full overflow-hidden border border-gray-700'>
-                                    <img src={user?.profileImage || dp} alt='' className='w-full h-full object-cover' />
+                {(!prevChatUsers || prevChatUsers.length === 0) ? (
+                    <div className='flex flex-col items-center mt-[40px] px-[15px]'>
+                        <div className='text-gray-500 text-center text-[16px] mb-6'>No messages yet</div>
+                        {userData?.following?.length > 0 && (
+                            <div className='w-full flex flex-col gap-[10px]'>
+                                <span className='text-gray-400 font-semibold text-[14px] mb-2 self-start'>Start a conversation:</span>
+                                {userData.following.map((user, index) => {
+                                    const isOnline = onlineUserIds?.includes(user?._id?.toString())
+                                    return (
+                                        <div
+                                            key={user._id || index}
+                                            className='w-full flex items-center gap-[12px] py-[8px] border-b border-gray-900 cursor-pointer hover:bg-gray-900 transition-colors rounded-xl px-2'
+                                            onClick={() => openChat(user)}
+                                        >
+                                            <div className='relative flex-shrink-0'>
+                                                <div className='w-[40px] h-[40px] rounded-full overflow-hidden border border-gray-700'>
+                                                    <img src={user?.profileImage || dp} alt='' className='w-full h-full object-cover' />
+                                                </div>
+                                                {isOnline && (
+                                                    <div className='absolute bottom-0 right-0 w-[10px] h-[10px] bg-green-500 rounded-full border-2 border-black' />
+                                                )}
+                                            </div>
+                                            <div className='flex flex-col min-w-0'>
+                                                <span className='text-white font-semibold text-[14px] truncate'>{user?.username}</span>
+                                                <span className='text-gray-400 text-[12px] truncate'>{user?.name}</span>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    prevChatUsers.map((user, index) => {
+                        const isOnline = onlineUserIds?.includes(user?._id?.toString())
+                        return (
+                            <div
+                                key={user._id || index}
+                                className='w-full flex items-center gap-[12px] px-[15px] py-[10px] hover:bg-gray-900 cursor-pointer active:bg-gray-800 transition-colors'
+                                onClick={() => openChat(user)}
+                            >
+                                {/* Avatar with online dot */}
+                                <div className='relative flex-shrink-0'>
+                                    <div className='w-[54px] h-[54px] rounded-full overflow-hidden border border-gray-700'>
+                                        <img src={user?.profileImage || dp} alt='' className='w-full h-full object-cover' />
+                                    </div>
+                                    {isOnline && (
+                                        <div className='absolute bottom-[2px] right-[2px] w-[13px] h-[13px] bg-green-500 rounded-full border-2 border-black' />
+                                    )}
                                 </div>
-                                {isOnline && (
-                                    <div className='absolute bottom-[2px] right-[2px] w-[13px] h-[13px] bg-green-500 rounded-full border-2 border-black' />
-                                )}
+                                {/* Name + status */}
+                                <div className='flex flex-col min-w-0'>
+                                    <span className='text-white font-semibold text-[15px] truncate'>{user?.username}</span>
+                                    <span className='text-gray-400 text-[13px] truncate'>
+                                        {isOnline ? 'Active now' : user?.name || ''}
+                                    </span>
+                                </div>
                             </div>
-                            {/* Name + status */}
-                            <div className='flex flex-col min-w-0'>
-                                <span className='text-white font-semibold text-[15px] truncate'>{user?.username}</span>
-                                <span className='text-gray-400 text-[13px] truncate'>
-                                    {isOnline ? 'Active now' : user?.name || ''}
-                                </span>
-                            </div>
-                        </div>
-                    )
-                })}
+                        )
+                    })
+                )}
             </div>
         </div>
     )

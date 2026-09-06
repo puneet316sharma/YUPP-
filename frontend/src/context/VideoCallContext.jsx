@@ -22,11 +22,16 @@ export const VideoCallProvider = ({ children }) => {
     const [remoteStream, setRemoteStream] = useState(null);
     const [isMuted, setIsMuted] = useState(false);
     const [isVideoOff, setIsVideoOff] = useState(false);
+    const [callError, setCallError] = useState(null);
 
     const localVideoRef = useRef(null);
     const remoteVideoRef = useRef(null);
     const peerConnection = useRef(null);
     const pendingOffer = useRef(null);
+
+    const iceCandidateQueue = useRef([]);
+    const callingTimeoutRef = useRef(null);
+    const failureTimeoutRef = useRef(null);
 
     // Clean up streams & peer connection
     const cleanUp = () => {
@@ -42,12 +47,22 @@ export const VideoCallProvider = ({ children }) => {
             peerConnection.current.close();
             peerConnection.current = null;
         }
+        if (callingTimeoutRef.current) {
+            clearTimeout(callingTimeoutRef.current);
+            callingTimeoutRef.current = null;
+        }
+        if (failureTimeoutRef.current) {
+            clearTimeout(failureTimeoutRef.current);
+            failureTimeoutRef.current = null;
+        }
         setCallState("idle");
         setPartnerId(null);
         setCallerInfo(null);
         pendingOffer.current = null;
         setIsMuted(false);
         setIsVideoOff(false);
+        setCallError(null);
+        iceCandidateQueue.current = [];
     };
 
     // End call locally and notify peer
@@ -80,13 +95,62 @@ export const VideoCallProvider = ({ children }) => {
         }
     };
 
+    const getIceServers = () => {
+        const defaultServers = [{ urls: "stun:stun.l.google.com:19302" }];
+        const envIce = import.meta.env.VITE_ICE_SERVERS;
+        if (envIce) {
+            try {
+                const parsed = JSON.parse(envIce);
+                if (Array.isArray(parsed)) {
+                    return parsed;
+                }
+            } catch (err) {
+                console.error("Failed to parse VITE_ICE_SERVERS env var:", err);
+            }
+        }
+        return defaultServers;
+    };
+
+    const handleConnectionFailure = (state) => {
+        console.log("ICE or connection State changed:", state);
+        if (state === "failed" || state === "disconnected") {
+            if (!failureTimeoutRef.current) {
+                failureTimeoutRef.current = setTimeout(() => {
+                    console.log(`Connection state remained ${state} for 5 seconds. Ending call.`);
+                    setCallError("Call failed to connect");
+                    setTimeout(() => {
+                        endCall();
+                    }, 3000);
+                }, 5000);
+            }
+        } else if (state === "connected" || state === "completed") {
+            if (failureTimeoutRef.current) {
+                clearTimeout(failureTimeoutRef.current);
+                failureTimeoutRef.current = null;
+            }
+            setCallError(null);
+        }
+    };
+
+    const flushIceCandidates = async () => {
+        const pc = peerConnection.current;
+        if (pc && iceCandidateQueue.current.length > 0) {
+            console.log(`Flushing ${iceCandidateQueue.current.length} queued ICE candidates`);
+            for (const candidate of iceCandidateQueue.current) {
+                try {
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (err) {
+                    console.error("Error adding queued ICE candidate:", err);
+                }
+            }
+            iceCandidateQueue.current = [];
+        }
+    };
+
     // Initialize RTCPeerConnection
     const createPeerConnection = (targetUserId) => {
         const pc = new RTCPeerConnection({
-            iceServers: [
-                { urls: "stun:stun.l.google.com:19302" }
-                // Comment: In production, add TURN servers here (e.g. coturn) for NAT/firewall traversal.
-            ]
+            iceServers: getIceServers()
         });
 
         pc.onicecandidate = (event) => {
@@ -99,6 +163,14 @@ export const VideoCallProvider = ({ children }) => {
             if (event.streams && event.streams[0]) {
                 setRemoteStream(event.streams[0]);
             }
+        };
+
+        pc.oniceconnectionstatechange = () => {
+            handleConnectionFailure(pc.iceConnectionState);
+        };
+
+        pc.onconnectionstatechange = () => {
+            handleConnectionFailure(pc.connectionState);
         };
 
         peerConnection.current = pc;
@@ -135,6 +207,15 @@ export const VideoCallProvider = ({ children }) => {
                     profileImage: userData.profileImage
                 }
             });
+
+            // Start calling timeout (30 seconds)
+            callingTimeoutRef.current = setTimeout(() => {
+                setCallError("No answer from recipient");
+                setTimeout(() => {
+                    endCall();
+                }, 3000);
+            }, 30000);
+
         } catch (error) {
             console.error("Error accessing camera/mic:", error);
             alert("Error accessing camera or microphone. Please grant permissions.");
@@ -162,6 +243,7 @@ export const VideoCallProvider = ({ children }) => {
             await pc.setLocalDescription(answer);
 
             socket.emit("call:answer", { to: partnerId, answer });
+            await flushIceCandidates();
         } catch (error) {
             console.error("Error answering call:", error);
             alert("Failed to answer the call: " + error.message);
@@ -173,6 +255,14 @@ export const VideoCallProvider = ({ children }) => {
     const declineCall = () => {
         endCall();
     };
+
+    // Clear calling timeout when call is accepted/connected
+    useEffect(() => {
+        if (callState === "connected" && callingTimeoutRef.current) {
+            clearTimeout(callingTimeoutRef.current);
+            callingTimeoutRef.current = null;
+        }
+    }, [callState]);
 
     // Socket Event Observers
     useEffect(() => {
@@ -195,6 +285,7 @@ export const VideoCallProvider = ({ children }) => {
                 try {
                     await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
                     setCallState("connected");
+                    await flushIceCandidates();
                 } catch (err) {
                     console.error("Error setting remote description:", err);
                     endCall();
@@ -203,12 +294,16 @@ export const VideoCallProvider = ({ children }) => {
         };
 
         const handleIceCandidate = async ({ candidate }) => {
-            if (peerConnection.current) {
+            const pc = peerConnection.current;
+            if (pc && pc.remoteDescription && pc.remoteDescription.type) {
                 try {
-                    await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
                 } catch (err) {
                     console.error("Error adding ICE candidate:", err);
                 }
+            } else {
+                console.log("Queueing ICE candidate before peerConnection or remoteDescription exists");
+                iceCandidateQueue.current.push(candidate);
             }
         };
 
@@ -263,6 +358,13 @@ export const VideoCallProvider = ({ children }) => {
             {callState !== "idle" && (
                 <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/90 backdrop-blur-md select-none text-white font-sans transition-all duration-300">
                     
+                    {/* Error Banner */}
+                    {callError && (
+                        <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-red-600/90 text-white px-6 py-2 rounded-full font-bold shadow-lg animate-bounce z-50">
+                            {callError}
+                        </div>
+                    )}
+
                     {/* Incoming Call Screen */}
                     {callState === "incoming" && (
                         <div className="flex flex-col items-center justify-center p-8 bg-zinc-900/60 rounded-3xl border border-zinc-800 shadow-2xl max-w-[350px] w-[90%] text-center backdrop-blur-lg">

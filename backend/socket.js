@@ -62,12 +62,13 @@ io.on("connection", (socket) => {
     })
     
     socket.on("disconnect", () => {
-        if (userId && userSocketMap[userId]) {
+        if (userId && userSocketMap[userId] === socket.id) {
             delete userSocketMap[userId]
+            io.emit('getOnlineUsers', Object.keys(userSocketMap))
         }
         
         // Cleanup active call on disconnect
-        if (userId && activeCalls[userId]) {
+        if (userId && userSocketMap[userId] === socket.id && activeCalls[userId]) {
             const partnerId = activeCalls[userId]
             const partnerSocketId = getSocketId(partnerId)
             if (partnerSocketId) {
@@ -76,8 +77,6 @@ io.on("connection", (socket) => {
             delete activeCalls[userId]
             delete activeCalls[partnerId]
         }
-      
-        io.emit('getOnlineUsers', Object.keys(userSocketMap))
     })
 }) 
 

@@ -10,6 +10,7 @@ import postRouter from "./routes/post.routes.js"
 import scrollRouter from "./routes/scroll.routes.js"
 import storyRouter from "./routes/story.routes.js"
 import MessageRouter from "./routes/message.routes.js"
+import aiRouter from "./routes/ai.routes.js"
 import { app, server } from "./socket.js"
 
 dotenv.config()
@@ -39,6 +40,7 @@ app.use("/api/post", postRouter)
 app.use("/api/scroll", scrollRouter)
 app.use("/api/story", storyRouter)
 app.use("/api/message", MessageRouter)
+app.use("/api/ai", aiRouter)
 
 server.listen(port, () => {
     ConnectDb()

@@ -3,6 +3,7 @@ import Notification from "../models/notification.model.js";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
 import { getSocketId, io } from "../socket.js";
+import { moderateContent, generateMultimodalEmbedding } from "../config/geminiService.js";
 
 export const uploadPost = async (req, res) => {
     try {
@@ -14,12 +15,24 @@ export const uploadPost = async (req, res) => {
         } else {
             return res.status(400).json({ message: "media is required" })
         }
+
+        // B. Content moderation
+        if (caption) {
+            const moderation = await moderateContent({ text: caption, mediaUrl: media });
+            if (!moderation.allowed) {
+                return res.status(400).json({ message: moderation.reason || "Content violates safety guidelines." });
+            }
+        }
+
+        // C. Multimodal embedding generation
+        const embedding = await generateMultimodalEmbedding({ text: caption, mediaUrl: media, mediaType });
         
         const post = await Post.create({
             caption,
             media,
             mediaType,
-            author: req.userId
+            author: req.userId,
+            embedding
         })
         
         await User.findByIdAndUpdate(req.userId, {
@@ -93,6 +106,15 @@ export const comment = async (req, res) => {
     try {
         const { message } = req.body
         const postId = req.params.postId
+
+        // B. Content moderation
+        if (message) {
+            const moderation = await moderateContent({ text: message });
+            if (!moderation.allowed) {
+                return res.status(400).json({ message: moderation.reason || "Content violates safety guidelines." });
+            }
+        }
+
         const post = await Post.findById(postId)
         
         if (!post) {

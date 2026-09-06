@@ -47,13 +47,30 @@ function MessageArea() {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" })
     }, [messages])
 
+    const messagesRef = useRef(messages)
+    useEffect(() => {
+        messagesRef.current = messages
+    }, [messages])
+
     // Live socket messages
     useEffect(() => {
         if (!socket) return
-        const onNew = (mess) => dispatch(setmessages([...(messages || []), mess]))
+        const onNew = (mess) => {
+            const senderId = (mess?.sender?._id || mess?.sender)?.toString()
+            const receiverId = (mess?.receiver?._id || mess?.receiver)?.toString()
+            const selectedId = selectedUser?._id?.toString()
+            const currentUserId = userData?._id?.toString()
+
+            if (
+                (senderId === selectedId && receiverId === currentUserId) ||
+                (senderId === currentUserId && receiverId === selectedId)
+            ) {
+                dispatch(setmessages([...(messagesRef.current || []), mess]))
+            }
+        }
         socket.on("newMessage", onNew)
         return () => socket.off("newMessage", onNew)
-    }, [socket, messages])
+    }, [socket, selectedUser?._id, userData?._id])
 
     const handleImage = (e) => {
         const file = e.target.files[0]
@@ -79,7 +96,7 @@ function MessageArea() {
             const result = await axios.post(
                 `${serverUrl}/api/message/send/${selectedUser._id}`,
                 formData,
-                { withCredentials: true, headers: { "Content-Type": "multipart/form-data" } }
+                { withCredentials: true }
             )
             dispatch(setmessages([...(messages || []), result.data]))
             setinput("")
@@ -143,11 +160,13 @@ function MessageArea() {
                         <span className='text-gray-500 text-[14px]'>No messages yet. Say hi!</span>
                     </div>
                 )}
-                {Array.isArray(messages) && messages.map((mess, index) =>
-                    mess?.sender === userData?._id
+                {Array.isArray(messages) && messages.map((mess, index) => {
+                    const senderId = (mess?.sender?._id || mess?.sender)?.toString()
+                    const currentUserId = userData?._id?.toString()
+                    return senderId === currentUserId
                         ? <SenderMessage key={mess._id || index} message={mess} />
                         : <ReceiverMessage key={mess._id || index} message={mess} />
-                )}
+                })}
                 <div ref={bottomRef} />
             </div>
 

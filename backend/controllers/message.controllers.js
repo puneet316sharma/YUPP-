@@ -3,6 +3,7 @@ import UploadonCloudinary from "../config/cloudinary.js";
 import Conversation from "../models/Conversion.model.js";
 import Message from "../models/messages.model.js";
 import { getSocketId, io } from "../socket.js";
+import { moderateContent } from "../config/geminiService.js";
 
 export const sendMessage=async(req,res)=>{
     try {
@@ -14,6 +15,15 @@ export const sendMessage=async(req,res)=>{
         if(req.file){
             image=await UploadonCloudinary(req.file.path)
         }
+
+        // B. Content moderation
+        if (message || image) {
+            const moderation = await moderateContent({ text: message, mediaUrl: image });
+            if (!moderation.allowed) {
+                return res.status(400).json({ message: moderation.reason || "Content violates safety guidelines." });
+            }
+        }
+
         const newMessage=await Message.create({
             sender:senderId,
             receiver:receiverId,
@@ -67,8 +77,8 @@ export const getPrevUserChats= async(req,res)=>{
         const userMap={}
         conversations.forEach(conv => {
             conv.participants.forEach(user => {
-                if(user._id!=currentuserId){
-                    userMap[user._id]=user
+                if(user?._id && user._id.toString() !== currentuserId.toString()){
+                    userMap[user._id.toString()] = user
                 }
             });
         });

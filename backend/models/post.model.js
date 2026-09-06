@@ -18,8 +18,10 @@ const PostSchema = new mongoose.Schema({
     },
        caption : {
         type:String
-
-        
+    },
+    embedding: {
+        type: [Number],
+        required: false
     },
     
     likes:[{

@@ -26,6 +26,8 @@ import Search from './pages/components/Search'
 import getAllNotifications from './hooks/getallNotifications'
 import Notifications from './pages/components/Notifications'
 import { setnotificationData } from './redux/userslic'
+import axios from 'axios'
+import { setprevChatUsers } from './redux/Messageslice'
 export const serverUrl = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
   ? "http://localhost:8000"
   : "https://yupp-6o8i.onrender.com";
@@ -43,12 +45,13 @@ function App() {
   const {notificationData}=useSelector(state=>state.user)
    const {socket}=useSelector(state=>state.socket)
    const dispatch=useDispatch()
+  const userId = userData?._id
   useEffect(()=>{
     let socketIo
-    if (userData){
+    if (userId){
       socketIo=io(serverUrl,{
         query:{
-          userId:userData._id
+          userId:userId
         }
       })
       dispatch(setsocket(socketIo))
@@ -59,6 +62,11 @@ function App() {
       socketIo.on("newNotification",(noti)=>{
         dispatch(setnotificationData(noti))
       })
+      socketIo.on("newMessage",()=>{
+        axios.get(`${serverUrl}/api/message/prevChats`,{withCredentials:true})
+          .then(r => dispatch(setprevChatUsers(r.data)))
+          .catch(()=>{})
+      })
 
       return ()=>socketIo.close()
     }
@@ -68,7 +76,7 @@ function App() {
         dispatch(setsocket(null))
       }
     }
-  },[userData,dispatch])
+  },[userId,dispatch])
 
 
 

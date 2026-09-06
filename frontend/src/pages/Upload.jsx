@@ -21,6 +21,8 @@ function Upload() {
     const [mediaType, setmediatype] = useState("")
     const [caption, setcaption] = useState("")
     const [loading, setloading] = useState(false)
+    const [aiLoading, setAiLoading] = useState(false)
+    const [cloudinaryUrl, setCloudinaryUrl] = useState(null)
     
     const mediaInput = useRef()
     
@@ -41,14 +43,46 @@ function Upload() {
       
       setbackendmedia(file)
       setfrontendmedia(URL.createObjectURL(file))
+      setCloudinaryUrl(null)
     }
+
+    const handleSuggestCaption = async () => {
+        if (!backendmedia) return;
+        setAiLoading(true);
+        try {
+            let mediaUrl = cloudinaryUrl;
+            if (!mediaUrl) {
+                const formData = new FormData();
+                formData.append("media", backendmedia);
+                const tempRes = await axios.post(`${serverUrl}/api/ai/upload-temp`, formData, {
+                    withCredentials: true
+                });
+                mediaUrl = tempRes.data.mediaUrl;
+                setCloudinaryUrl(mediaUrl);
+            }
+            
+            const suggestionsRes = await axios.post(`${serverUrl}/api/ai/caption`, { mediaUrl, mediaType }, { withCredentials: true });
+            const { caption: aiCaption, hashtags } = suggestionsRes.data;
+            const combinedCaption = `${aiCaption} ${hashtags.map(tag => `#${tag}`).join(" ")}`;
+            setcaption(combinedCaption);
+        } catch (error) {
+            console.error("AI Caption suggestion error:", error);
+            alert("Failed to suggest caption. Please ensure GEMINI_API_KEY is configured.");
+        } finally {
+            setAiLoading(false);
+        }
+    };
 
     const UploadPost = async () => {
       try {
         const formData = new FormData()
         formData.append("caption", caption)
         formData.append("mediaType", mediaType)
-        formData.append("media", backendmedia)
+        if (cloudinaryUrl) {
+            formData.append("mediaUrl", cloudinaryUrl)
+        } else {
+            formData.append("media", backendmedia)
+        }
         
         const result = await axios.post(`${serverUrl}/api/post/upload`, formData, { withCredentials: true })
         
@@ -138,7 +172,21 @@ function Upload() {
           {mediaType === "image" && (
             <div className='w-full flex flex-col items-center justify-center'>
               <img src={frontendmedia} alt='' className='max-h-[250px] rounded-2xl object-contain'/>
-              {uploadType !== "story" && <input type='text' className='w-full border-b-gray-400 border-b-2 outline-none px-[10px] py-[5px] text-white mt-[20px] bg-transparent' placeholder='Write a caption...' onChange={(e) => setcaption(e.target.value)} value={caption} />}
+              {uploadType !== "story" && (
+                <div className="w-full flex flex-col items-stretch mt-[20px]">
+                  <input type='text' className='w-full border-b-gray-400 border-b-2 outline-none px-[10px] py-[5px] text-white bg-transparent' placeholder='Write a caption...' onChange={(e) => setcaption(e.target.value)} value={caption} />
+                  {uploadType === "post" && (
+                    <button 
+                      type="button" 
+                      onClick={handleSuggestCaption} 
+                      disabled={aiLoading} 
+                      className='mt-3 self-end px-4 py-1.5 bg-zinc-800 text-white rounded-full text-sm font-semibold hover:bg-zinc-700 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5'
+                    >
+                      {aiLoading ? <ClipLoader size={14} color='white' /> : "Suggest caption 🪄"}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -147,7 +195,21 @@ function Upload() {
               <div className='w-full max-h-[250px] overflow-hidden rounded-2xl flex justify-center bg-zinc-900'>
                 <Videoplayer media={frontendmedia} />
               </div>
-              {uploadType !== "story" && <input type='text' className='w-full border-b-gray-400 border-b-2 outline-none px-[10px] py-[5px] text-white mt-[20px] bg-transparent' placeholder='Write a caption...' onChange={(e) => setcaption(e.target.value)} value={caption}/>}
+              {uploadType !== "story" && (
+                <div className="w-full flex flex-col items-stretch mt-[20px]">
+                  <input type='text' className='w-full border-b-gray-400 border-b-2 outline-none px-[10px] py-[5px] text-white bg-transparent' placeholder='Write a caption...' onChange={(e) => setcaption(e.target.value)} value={caption} />
+                  {uploadType === "post" && (
+                    <button 
+                      type="button" 
+                      onClick={handleSuggestCaption} 
+                      disabled={aiLoading} 
+                      className='mt-3 self-end px-4 py-1.5 bg-zinc-800 text-white rounded-full text-sm font-semibold hover:bg-zinc-700 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5'
+                    >
+                      {aiLoading ? <ClipLoader size={14} color='white' /> : "Suggest caption 🪄"}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

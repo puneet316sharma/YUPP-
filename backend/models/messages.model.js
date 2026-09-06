@@ -8,7 +8,7 @@ receiver:{
     type:mongoose.Schema.Types.ObjectId,
             ref:"User"
 },
-meassage:{
+message:{
     type:String
 },
 image:{

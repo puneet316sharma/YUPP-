@@ -4,6 +4,7 @@ import dp from "../../assets/dp.png"
 
 function ReceiverMessage({ message }) {
     const { selectedUser } = useSelector(state => state.message)
+    const textContent = message?.message || message?.meassage
     return (
         <div className='flex items-end gap-[8px]'>
             <div className='w-[28px] h-[28px] rounded-full overflow-hidden flex-shrink-0 border border-gray-700'>
@@ -13,9 +14,9 @@ function ReceiverMessage({ message }) {
                 {message.image && (
                     <img src={message.image} alt='' className='max-w-full rounded-2xl rounded-tl-sm object-cover max-h-[260px]' />
                 )}
-                {message.message && (
+                {textContent && (
                     <div className='bg-[#1e2424] text-white text-[15px] px-[14px] py-[10px] rounded-2xl rounded-tl-sm break-words'>
-                        {message.message}
+                        {textContent}
                     </div>
                 )}
             </div>
