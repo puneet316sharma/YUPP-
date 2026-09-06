@@ -100,7 +100,7 @@ export const generateCaptionAndHashtags = async (mediaUrl, mediaType) => {
         fileName = mediaData.fileName;
         
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-1.5-flash",
             contents: [
                 mediaData.part,
                 { text: "Suggest a caption (under 20 words), exactly 5 relevant hashtags, and a brief descriptive altText (for screen readers) for this media. Respond with a JSON object containing keys 'caption' (string), 'hashtags' (array of 5 strings), and 'altText' (string). Do not add any markdown formatting outside of the JSON." }
@@ -152,7 +152,7 @@ Do not add any markdown formatting outside of the JSON.`;
         contents.push({ text: promptText });
 
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-1.5-flash",
             contents: contents,
             config: {
                 responseMimeType: "application/json"
@@ -235,7 +235,7 @@ Chat Log:
 ${messagesText}`;
 
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-1.5-flash",
             contents: [{ text: promptText }]
         });
 
