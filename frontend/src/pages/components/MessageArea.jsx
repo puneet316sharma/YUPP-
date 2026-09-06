@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { IoMdArrowBack } from "react-icons/io"
 import { FaImages } from "react-icons/fa6"
 import { IoSend, IoVideocam } from "react-icons/io5"
+import { HiSparkles } from "react-icons/hi2"
 import { useVideoCall } from '../../context/VideoCallContext'
 import dp from "../../assets/dp.png"
 import SenderMessage from './SenderMessage'
@@ -24,6 +25,9 @@ function MessageArea() {
     const [frontendImage, setfrontendImage] = useState(null)
     const [backendImage, setbackendImage] = useState(null)
     const [sending, setsending] = useState(false)
+    const [summarizing, setSummarizing] = useState(false)
+    const [summaryModal, setSummaryModal] = useState(false)
+    const [summaryText, setSummaryText] = useState("")
     const imageInput = useRef()
     const bottomRef = useRef()
 
@@ -109,6 +113,25 @@ function MessageArea() {
         setsending(false)
     }
 
+    const handleSummarize = async () => {
+        if (!selectedUser?._id) return
+        setSummarizing(true)
+        try {
+            const res = await axios.post(
+                `${serverUrl}/api/ai/summarize-chat`,
+                { receiverId: selectedUser._id },
+                { withCredentials: true }
+            )
+            setSummaryText(res.data.summary || "No summary available.")
+            setSummaryModal(true)
+        } catch (error) {
+            console.error("Summarize chat error:", error)
+            setSummaryText("Failed to generate summary. Please ensure GEMINI_API_KEY is configured.")
+            setSummaryModal(true)
+        }
+        setSummarizing(false)
+    }
+
     if (!selectedUser) return null
 
     const canSend = input.trim().length > 0 || !!frontendImage
@@ -146,6 +169,15 @@ function MessageArea() {
                     title="Start Video Call"
                 >
                     <IoVideocam size={22} />
+                </button>
+                <button
+                    onClick={handleSummarize}
+                    disabled={summarizing}
+                    className='flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-[12px] font-semibold px-3 py-1.5 rounded-full transition-all flex-shrink-0 cursor-pointer disabled:opacity-50 shadow-md'
+                    title="Summarize chat with AI"
+                >
+                    <HiSparkles size={15} />
+                    <span>{summarizing ? 'Summarizing...' : 'Summarize 🪄'}</span>
                 </button>
             </div>
 
@@ -225,6 +257,36 @@ function MessageArea() {
                     )}
                 </div>
             </div>
+
+            {/* ── AI Chat Summary Modal ── */}
+            {summaryModal && (
+                <div className='fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4'>
+                    <div className='bg-zinc-900 border border-purple-500/40 rounded-2xl p-6 max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in duration-200'>
+                        <button
+                            onClick={() => setSummaryModal(false)}
+                            className='absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-full text-lg cursor-pointer'
+                        >
+                            ✕
+                        </button>
+                        <div className='flex items-center gap-2 mb-3 text-purple-400 font-bold text-lg'>
+                            <HiSparkles size={22} className='text-pink-400' />
+                            <span>AI Chat Summary</span>
+                        </div>
+                        <p className='text-xs text-gray-400 mb-4'>
+                            Summary of conversation with <span className='text-purple-300 font-semibold'>@{selectedUser.username}</span>:
+                        </p>
+                        <div className='bg-black/60 rounded-xl p-4 border border-zinc-800 text-gray-200 text-sm leading-relaxed whitespace-pre-wrap max-h-[300px] overflow-y-auto'>
+                            {summaryText}
+                        </div>
+                        <button
+                            onClick={() => setSummaryModal(false)}
+                            className='mt-5 w-full py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-xl text-sm transition-all cursor-pointer shadow-lg'
+                        >
+                            Close Summary
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

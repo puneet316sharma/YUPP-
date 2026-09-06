@@ -209,3 +209,39 @@ export const generateMultimodalEmbedding = async ({ text, mediaUrl, mediaType })
         return null;
     }
 };
+
+/**
+ * D. Summarizes chat conversation messages using Gemini.
+ */
+export const summarizeConversation = async ({ messagesText, otherUserName, currentUserName }) => {
+    try {
+        if (!process.env.GEMINI_API_KEY) {
+            return "Gemini API key is not configured. Unable to summarize chat.";
+        }
+        if (!messagesText || messagesText.trim() === "") {
+            return `No message history available to summarize with ${otherUserName}.`;
+        }
+
+        const promptText = `You are an AI assistant in a social chat application called YUPP.
+Summarize the following chat conversation between ${currentUserName || "User"} and ${otherUserName || "Other User"}.
+Focus on:
+1. Main topics discussed.
+2. Key messages, questions, or requests sent by ${otherUserName}.
+3. Any important decisions or action items.
+
+Keep the summary clear, friendly, and concise (under 120 words), formatted cleanly with bullet points if helpful.
+
+Chat Log:
+${messagesText}`;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [{ text: promptText }]
+        });
+
+        return response.text.trim();
+    } catch (error) {
+        console.error("Gemini Summarization Error:", error);
+        return `Failed to generate summary: ${error.message}`;
+    }
+};

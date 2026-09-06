@@ -2,8 +2,10 @@ import express from "express";
 import isAuth from "../middlewares/isAuth.js";
 import { upload } from "../middlewares/multer.js";
 import UploadonCloudinary from "../config/cloudinary.js";
-import { generateCaptionAndHashtags, generateMultimodalEmbedding } from "../config/geminiService.js";
+import { generateCaptionAndHashtags, generateMultimodalEmbedding, summarizeConversation } from "../config/geminiService.js";
 import Post from "../models/post.model.js";
+import Conversation from "../models/Conversion.model.js";
+import User from "../models/user.model.js";
 
 const aiRouter = express.Router();
 
@@ -88,6 +90,53 @@ aiRouter.get("/search", isAuth, async (req, res) => {
     } catch (error) {
         console.error("Semantic search router error:", error);
         return res.status(500).json({ message: `Search error: ${error.message}` });
+    }
+});
+
+// POST /api/ai/summarize-chat
+aiRouter.post("/summarize-chat", isAuth, async (req, res) => {
+    const { receiverId } = req.body;
+    const senderId = req.userId;
+
+    if (!receiverId) {
+        return res.status(400).json({ message: "receiverId is required" });
+    }
+
+    try {
+        const otherUser = await User.findById(receiverId);
+        const currentUser = await User.findById(senderId);
+        if (!otherUser) {
+            return res.status(404).json({ message: "Other user not found" });
+        }
+
+        const conversation = await Conversation.findOne({
+            participants: { $all: [senderId, receiverId] }
+        }).populate("messages");
+
+        if (!conversation || !conversation.messages || conversation.messages.length === 0) {
+            return res.status(200).json({ summary: `No message history with ${otherUser.username || "this user"} yet.` });
+        }
+
+        // Format up to the last 40 messages
+        const recentMessages = conversation.messages.slice(-40);
+        const messagesText = recentMessages.map(m => {
+            const senderName = m.sender.toString() === senderId.toString()
+                ? (currentUser?.username || "You")
+                : (otherUser?.username || "Other User");
+            const text = m.message || m.meassage || "[Media attachment]";
+            return `${senderName}: ${text}`;
+        }).join("\n");
+
+        const summary = await summarizeConversation({
+            messagesText,
+            otherUserName: otherUser.username || otherUser.name,
+            currentUserName: currentUser?.username || currentUser?.name
+        });
+
+        return res.status(200).json({ summary });
+    } catch (error) {
+        console.error("Summarize chat error:", error);
+        return res.status(500).json({ message: `Summarization failed: ${error.message}` });
     }
 });
 
